@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>计算器</title>
+    <style>
+        *{box-sizing:border-box;font-family:system-ui}
+        body{display:flex;justify-content:center;background:#f0f2f5}
+        .container{width:360px;margin-top:40px}
+        .calc{background:#222;padding:20px;border-radius:12px}
+        #input{width:100%;padding:16px;font-size:24px;text-align:right;margin-bottom:10px}
+        .btn-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+        button{padding:16px;font-size:18px;border:none;border-radius:8px;cursor:pointer}
+        .eq{background:#2196F3;color:white}
+        .del{background:#ff5722;color:white}
+        .history{margin-top:20px;background:white;padding:16px;border-radius:10px}
+        .item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="calc">
+        <input id="input" readonly>
+        <div class="btn-grid">
+            <button onclick="append('7')">7</button>
+            <button onclick="append('8')">8</button>
+            <button onclick="append('9')">9</button>
+            <button onclick="append('/')">/</button>
+
+            <button onclick="append('4')">4</button>
+            <button onclick="append('5')">5</button>
+            <button onclick="append('6')">6</button>
+            <button onclick="append('*')">*</button>
+
+            <button onclick="append('1')">1</button>
+            <button onclick="append('2')">2</button>
+            <button onclick="append('3')">3</button>
+            <button onclick="append('-')">-</button>
+
+            <button onclick="append('0')">0</button>
+            <button onclick="append('.')">.</button>
+            <button class="eq" onclick="calc()">=</button>
+            <button class="del" onclick="clearAll()">C</button>
+        </div>
+    </div>
+    <div class="history">
+        <h3>计算历史</h3>
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<script>
+const apiBase = "http://127.0.0.1:8000";
+const input = document.getElementById("input");
+const historyList = document.getElementById("historyList");
+
+function append(val){
+    input.value += val;
+}
+function clearAll(){
+    input.value = "";
+}
+
+async function calc(){
+    const expr = input.value.trim();
+    if(!expr) return;
+    try{
+        const res = await fetch(`${apiBase}/api/calculate`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({expression:expr})
+        })
+        const data = await res.json();
+        if(data.success){
+            input.value = data.result;
+            loadHistory();
+        }else{
+            alert(data.detail);
+        }
+    }catch(e){
+        alert("请求错误");
+    }
+}
+
+async function loadHistory(){
+    const res = await fetch(`${apiBase}/api/history`);
+    const data = await res.json();
+    historyList.innerHTML = "";
+    data.data.forEach(item=>{
+        const div = document.createElement("div");
+        div.className="item";
+        div.innerHTML = `<span>${item.expression}=${item.result}</span>
+        <button onclick="delHis(${item.id})">删除</button>`;
+        historyList.appendChild(div);
+    })
+}
+
+async function delHis(id){
+    await fetch(`${apiBase}/api/history/${id}`,{method:"DELETE"});
+    loadHistory();
+}
+
+loadHistory();
+</script>
+</body>
+</html>
